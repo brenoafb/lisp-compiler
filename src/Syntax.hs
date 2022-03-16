@@ -20,6 +20,7 @@ type CtxFrame = M.Map Ident Type
 type Ctx = [CtxFrame]
 
 data Expr = Atom       Ident
+          | Char       Char
           | Str        T.Text
           | IntExpr    Int32
           | DoubleExpr Double

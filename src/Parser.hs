@@ -24,6 +24,7 @@ double = Token.float lexer
 whiteSpace = Token.whiteSpace lexer
 comma = Token.comma lexer
 stringLiteral = Token.stringLiteral lexer
+charLiteral = Token.charLiteral lexer
 reservedOp = Token.reservedOp lexer
 reserved = Token.reserved lexer
 
@@ -36,8 +37,9 @@ program = whiteSpace >> many expr
 expr :: Parser Expr
 expr = try doubleExpr
   <|> try intExpr
-  <|> boolExpr
+  <|> try charExpr
   <|> quote
+  <|> boolExpr
   <|> atom
   <|> stringExpr
   <|> list
@@ -66,3 +68,6 @@ list = List <$> parens exprs
 
 stringExpr :: Parser Expr
 stringExpr = Str . T.pack <$> stringLiteral
+
+charExpr :: Parser Expr
+charExpr = Char <$> charLiteral
