@@ -16,6 +16,7 @@ data ASM = MOVL Int32 Register
          | CMPL Int32 Register
          | SALL Int32 Register
          | ORL  Int32 Register
+         | ANDL  Int32 Register
          | SHR  Int32 Register
          | SHL  Int32 Register
          | SETE Register
@@ -32,6 +33,7 @@ formatASM (ADDL x reg) = intRegOp "addl" x reg
 formatASM (CMPL x reg) = intRegOp "cmpl" x reg
 formatASM (SALL x reg) = intRegOp "sall" x reg
 formatASM (ORL  x reg) = intRegOp "orl" x reg
+formatASM (ANDL  x reg) = intRegOp "andl" x reg
 formatASM (SHR  x reg) = intRegOp "shr" x reg
 formatASM (SHL  x reg) = intRegOp "shl" x reg
 formatASM (SETE reg) = "sete" <> " " <> formatReg reg

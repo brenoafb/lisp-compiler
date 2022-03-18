@@ -49,6 +49,7 @@ addl x r = emit $ ADDL x r
 cmpl x r = emit $ CMPL x r
 sall x r = emit $ SALL x r
 orl x r = emit $ ORL x r
+andl x r = emit $ ANDL x r
 sete r = emit $ SETE r
 shr x r = emit $ SHR x r
 shl x r = emit $ SHL x r
@@ -68,7 +69,7 @@ compileExpr (List [Atom "add1", e]) = do
 compileExpr (List [Atom "integer->char", e@(IntExpr _)]) = do
   compileExpr e
   shl 6 EAX
-  orl char_tag EAX
+  orl (tag charRep) EAX
 compileExpr (List [Atom "char->integer", e@(Char _)]) = do
   compileExpr e
   shr 6 EAX
@@ -79,30 +80,65 @@ compileExpr (List [Atom "zero?", e]) = do
   sete AL
   sall 7 EAX
   orl 31 EAX
+compileExpr (List [Atom "integer?", e]) = do
+  compileExpr e
+  mkTypePredicate fixnumRep
+compileExpr (List [Atom "boolean?", e]) = do
+  compileExpr e
+  mkTypePredicate boolRep
 compileExpr e = do
   movl (immediateRep e) EAX
 
+mkTypePredicate :: TypeRep -> CompC ()
+mkTypePredicate rep = do
+  andl (mask rep) EAX
+  cmpl (tag rep) EAX
+  movl 0 EAX
+  sete AL
+  sall 7 EAX
+  orl 31 EAX
+
 immediateRep :: Expr -> Int32
 immediateRep (Char c) =
-  (toInt32 c `shift` char_shift) .|. char_tag
+  (toInt32 c `shift` tshift charRep) .|. (tag charRep)
 immediateRep (IntExpr x) =
-  (x `shift` fixnum_shift) .|. fixnum_tag
+  (x `shift` tshift fixnumRep) .|. (tag fixnumRep)
 immediateRep (BoolExpr x) =
   let b = if x then 1 else 0
-  in (b `shift` bool_shift) .|. bool_tag
-immediateRep (List []) = empty_list
+  in (b `shift` tshift boolRep) .|. (tag boolRep)
+immediateRep (List []) = c
+  where ConstRep c = emptyListRep
 immediateRep _ = 0xBEEF
 
 
+toInt32 :: Enum a => a -> Int32
 toInt32 = fromIntegral . fromEnum
 
-fixnum_mask  = 3
-fixnum_tag   = 0
-fixnum_shift = 2
-char_mask    = 0xFF
-char_tag     = 0x0E
-char_shift   = 8
-bool_mask    = 0x3F
-bool_tag     = 0x1F
-bool_shift   = 7
-empty_list   = 0x2F
+data TypeRep =
+  TaggedRep { mask   :: Int32
+            , tag    :: Int32
+            , tshift :: Int
+            }
+  | ConstRep Int32
+  deriving (Eq, Show)
+
+
+fixnumRep =
+  TaggedRep { mask  = 3
+          , tag   = 0
+          , tshift = 2
+          }
+
+charRep =
+  TaggedRep { mask  = 0xFF
+          , tag   = 0x0E
+          , tshift = 8
+          }
+
+boolRep =
+  TaggedRep { mask  = 0x3F
+          , tag   = 0x1F
+          , tshift = 7
+          }
+
+emptyListRep = ConstRep 0x2F
