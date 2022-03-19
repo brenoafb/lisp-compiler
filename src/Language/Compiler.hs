@@ -62,6 +62,11 @@ compileExpr (List [Atom "=", e1, e2]) = do
   push
   compileExpr e1
   compareWithStack
+compileExpr (List [Atom "*", e1, e2]) = do
+  compileExpr e2
+  push
+  compileExpr e1
+  mulWithStack
 compileExpr (List [Atom "+", e1, e2]) = do
   compileExpr e2
   push

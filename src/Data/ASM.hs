@@ -17,11 +17,13 @@ data ASM = MOVL Operand Operand
          | ADDL Operand Operand
          | SUBL Operand Operand
          | CMPL Operand Operand
+         | IMUL Operand Register
          | SALL Int32 Register
          | ORL  Int32 Register
          | ANDL  Int32 Register
          | SHR  Int32 Register
          | SHL  Int32 Register
+         | SAR  Int32 Register
          | SETE Register
          | LABEL T.Text
          | JMP T.Text
@@ -56,11 +58,14 @@ formatASM (SUBL src dst) =
   format "subl" src dst
 formatASM (CMPL src dst) =
   format "cmpl" src dst
+formatASM (IMUL op r) =
+  format "imul" op (RegisterOperand r)
 formatASM (SALL x reg) = intRegOp "sall" x reg
 formatASM (ORL  x reg) = intRegOp "orl" x reg
 formatASM (ANDL  x reg) = intRegOp "andl" x reg
 formatASM (SHR  x reg) = intRegOp "shr" x reg
 formatASM (SHL  x reg) = intRegOp "shl" x reg
+formatASM (SAR  x reg) = intRegOp "sar" x reg
 formatASM (SETE reg) = "sete" <> " " <> formatReg reg
 formatASM (JMP l) =
   "jmp " <> l

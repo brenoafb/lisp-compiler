@@ -34,12 +34,17 @@ jmp l = emit $ JMP l
 
 je l = emit $ JE l
 
+imul x r = emit $ IMUL x r
+
+imulo x r1 r2 = imul (OffsetOperand x r1) r2
+
 sall x r = emit $ SALL x r
 orl x r = emit $ ORL x r
 andl x r = emit $ ANDL x r
 sete r = emit $ SETE r
 shr x r = emit $ SHR x r
 shl x r = emit $ SHL x r
+sar x r = emit $ SAR x r
 ret = emit RET
 push = do
   si <- getSI
@@ -71,6 +76,12 @@ compareWithStack = do
   si <- stackIndex <$> get
   cmplo si RSP EAX
   mkBoolFromFlag
+
+mulWithStack = do
+  incSI
+  si <- stackIndex <$> get
+  imulo si RSP EAX
+  sar 2 EAX
 
 addWithStack = do
   incSI
