@@ -77,15 +77,18 @@ compileExpr (List [Atom "-", e1, e2]) = do
   push
   compileExpr e1
   subWithStack
-compileExpr (List [Atom "let", List bindings, body]) =
-  let go [] = compileExpr body
-      go ((List [Atom v, e]):xs) = do
-        si <- getSI
-        compileExpr e
-        push
-        extendEnv v si
-        go xs
-  in go bindings
+compileExpr (List [Atom "let", List bindings, body]) = do
+  mapM_
+    (\binding ->
+      case binding of
+        List [Atom v, e] -> do
+          si <- getSI
+          compileExpr e
+          push
+          extendEnv v si
+        _ -> error "bad let syntax")
+    bindings
+  compileExpr body
 compileExpr (List [Atom "if", cond, conseq, alt]) = do
   l0 <- uniqueLabel
   l1 <- uniqueLabel
