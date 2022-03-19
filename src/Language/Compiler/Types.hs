@@ -23,6 +23,10 @@ type Ident = T.Text
 type Env = M.Map Ident Int32
 emptyEnv = M.empty
 
+extendEnv :: Ident -> Int32 -> CompC ()
+extendEnv v i =
+  modify (\st -> st { env = M.insert v i (env st) })
+
 runCompC c =
   reverse . asm . runIdentity $ execStateT c initialState
   where initialState =

@@ -6,13 +6,14 @@ module Language.Compiler (compile) where
 import Language.Compiler.Combinators
 import Language.Compiler.Constants
 import Language.Compiler.Types
+import Control.Monad.State
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.Bits
 import Data.Int
 
-import System.Process
+import System.Process hiding (env)
 
 import Language.Syntax
 import Data.ASM
@@ -71,8 +72,17 @@ compileExpr (List [Atom "-", e1, e2]) = do
   push
   compileExpr e1
   subWithStack
-compileExpr (List [Atom "let", List bindings, body]) = do
-  undefined
+compileExpr (List [Atom "let", List bindings, body]) =
+  let go [] = compileExpr body
+      go ((List [Atom v, e]):xs) = do
+        si <- getSI
+        compileExpr e
+        push
+        extendEnv v si
+        go xs
+  in go bindings
+compileExpr (Atom v) =
+  getVar v
 compileExpr e = do
   movli (immediateRep e) EAX
 

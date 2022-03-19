@@ -5,6 +5,7 @@ import Data.ASM
 import Data.Int
 import Language.Compiler.Constants
 import Language.Compiler.Types
+import qualified Data.Map as M
 
 emit :: ASM -> CompC ()
 emit instr =
@@ -35,7 +36,7 @@ shr x r = emit $ SHR x r
 shl x r = emit $ SHL x r
 ret = emit RET
 push = do
-  si <- stackIndex <$> get
+  si <- getSI
   movlo' EAX RSP si
   decSI
 
@@ -44,6 +45,14 @@ decSI =
 
 incSI =
   modify (\st -> st { stackIndex = stackIndex st + wordsize })
+
+getSI = stackIndex <$> get
+
+getVar v = do
+  env <- env <$> get
+  case M.lookup v env of
+    Nothing -> error "unbound variable"
+    Just addr -> movlo addr RSP EAX
 
 mkBoolFromFlag = do
   movli 0 EAX
