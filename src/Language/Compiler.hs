@@ -30,80 +30,80 @@ runGCC = do
   pure ()
 
 compileProgram :: Program -> CompC ()
-compileProgram = mapM_ compileExpr'
+compileProgram = mapM_ compileExpr
 
-compileExpr' e = do
-  compileExpr e
+compileExpr e = do
+  emitExpr e
   ret
 
-compileExpr :: Expr -> CompC ()
-compileExpr (List [Atom "add1", e]) = do
-  compileExpr e
+emitExpr :: Expr -> CompC ()
+emitExpr (List [Atom "add1", e]) = do
+  emitExpr e
   addli (immediateRep (IntExpr 1)) EAX
-compileExpr (List [Atom "integer->char", e@(IntExpr _)]) = do
-  compileExpr e
+emitExpr (List [Atom "integer->char", e@(IntExpr _)]) = do
+  emitExpr e
   shl 6 EAX
   orl (tag charRep) EAX
-compileExpr (List [Atom "char->integer", e@(Char _)]) = do
-  compileExpr e
+emitExpr (List [Atom "char->integer", e@(Char _)]) = do
+  emitExpr e
   shr 6 EAX
-compileExpr (List [Atom "zero?", e]) = do
-  compileExpr e
+emitExpr (List [Atom "zero?", e]) = do
+  emitExpr e
   cmpli 0 EAX
   mkBoolFromFlag
-compileExpr (List [Atom "integer?", e]) = do
-  compileExpr e
+emitExpr (List [Atom "integer?", e]) = do
+  emitExpr e
   mkTypePredicate fixnumRep
-compileExpr (List [Atom "boolean?", e]) = do
-  compileExpr e
+emitExpr (List [Atom "boolean?", e]) = do
+  emitExpr e
   mkTypePredicate boolRep
-compileExpr (List [Atom "=", e1, e2]) = do
-  compileExpr e2
+emitExpr (List [Atom "=", e1, e2]) = do
+  emitExpr e2
   push
-  compileExpr e1
+  emitExpr e1
   compareWithStack
-compileExpr (List [Atom "*", e1, e2]) = do
-  compileExpr e2
+emitExpr (List [Atom "*", e1, e2]) = do
+  emitExpr e2
   push
-  compileExpr e1
+  emitExpr e1
   mulWithStack
-compileExpr (List [Atom "+", e1, e2]) = do
-  compileExpr e2
+emitExpr (List [Atom "+", e1, e2]) = do
+  emitExpr e2
   push
-  compileExpr e1
+  emitExpr e1
   addWithStack
-compileExpr (List [Atom "-", e1, e2]) = do
-  compileExpr e2
+emitExpr (List [Atom "-", e1, e2]) = do
+  emitExpr e2
   push
-  compileExpr e1
+  emitExpr e1
   subWithStack
-compileExpr (List [Atom "let", List bindings, body]) = do
+emitExpr (List [Atom "let", List bindings, body]) = do
   mapM_
     (\binding ->
       case binding of
         List [Atom v, e] -> do
           si <- getSI
-          compileExpr e
+          emitExpr e
           push
           extendEnv v si
         _ -> error "bad let syntax")
     bindings
-  compileExpr body
-compileExpr (List [Atom "if", cond, conseq, alt]) = do
+  emitExpr body
+emitExpr (List [Atom "if", cond, conseq, alt]) = do
   l0 <- uniqueLabel
   l1 <- uniqueLabel
-  compileExpr cond
+  emitExpr cond
   cmpli (immediateRep (BoolExpr False)) EAX
   je l0
-  compileExpr conseq
+  emitExpr conseq
   jmp l1
   label l0
-  compileExpr alt
+  emitExpr alt
   label l1
 
-compileExpr (Atom v) =
+emitExpr (Atom v) =
   getVar v
-compileExpr e = do
+emitExpr e = do
   movli (immediateRep e) EAX
 
 mkTypePredicate :: TypeRep -> CompC ()
