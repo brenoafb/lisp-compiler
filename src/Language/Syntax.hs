@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveFunctor #-}
 
-module Syntax where
+module Language.Syntax where
 
 import Control.Monad.State
 import Control.Monad.Except

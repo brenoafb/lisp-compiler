@@ -1,10 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module ASM where
+module Data.ASM (ASM(..), Register(..), Operand(..), formatASM) where
 
 import qualified Data.Text as T
 
-import Data.Bits
 import Data.Int
 
 data Register = EAX
@@ -16,7 +15,8 @@ data Register = EAX
 
 data ASM = MOVL Operand Operand
          | ADDL Operand Operand
-         | CMPL Int32 Register
+         | SUBL Operand Operand
+         | CMPL Operand Operand
          | SALL Int32 Register
          | ORL  Int32 Register
          | ANDL  Int32 Register
@@ -45,11 +45,14 @@ formatReg RSP = "%rsp"
 formatReg AL = "%al"
 
 formatASM :: ASM -> T.Text
-formatASM (MOVL opSrc opDst) =
-  "movl" <> " " <> formatOperand opSrc <> ", " <> formatOperand opDst
-formatASM (ADDL opSrc opDst) =
-  "addl" <> " " <> formatOperand opSrc <> ", " <> formatOperand opDst
-formatASM (CMPL x reg) = intRegOp "cmpl" x reg
+formatASM (MOVL src dst) =
+  format "movl" src dst
+formatASM (ADDL src dst) =
+  format "addl" src dst
+formatASM (SUBL src dst) =
+  format "subl" src dst
+formatASM (CMPL src dst) =
+  format "cmpl" src dst
 formatASM (SALL x reg) = intRegOp "sall" x reg
 formatASM (ORL  x reg) = intRegOp "orl" x reg
 formatASM (ANDL  x reg) = intRegOp "andl" x reg
@@ -60,5 +63,8 @@ formatASM RET =
   "ret"
 
 intRegOp i x reg = i <> " $" <> show' x <> ", " <> formatReg reg
+
+format instr src dst =
+  instr <> " " <> formatOperand src <> ", " <> formatOperand dst
 
 show' = T.pack . show

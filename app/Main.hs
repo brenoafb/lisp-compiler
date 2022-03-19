@@ -4,8 +4,8 @@ import System.Environment
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
-import Parser
-import Compiler
+import Language.Parser
+import Language.Compiler
 
 main :: IO ()
 main = do

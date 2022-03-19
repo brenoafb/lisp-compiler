@@ -25,11 +25,13 @@ source-repository head
 
 library
   exposed-modules:
-      ASM
-      Compiler
-      Lib
-      Parser
-      Syntax
+      Data.ASM
+      Language.Compiler
+      Language.Compiler.Combinators
+      Language.Compiler.Constants
+      Language.Compiler.Types
+      Language.Parser
+      Language.Syntax
   other-modules:
       Paths_incremental_scheme_compiler
   hs-source-dirs:
