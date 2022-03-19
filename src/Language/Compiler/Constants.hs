@@ -29,7 +29,7 @@ emptyListRep = ConstRep 0x2F
 wordsize :: Int32
 wordsize = 8
 
-header =
+asmHeader =
   T.unlines [ "    .text"
             , "    .p2align 4,,15"
             , ".global scheme_entry"

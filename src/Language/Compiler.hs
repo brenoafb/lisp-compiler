@@ -7,25 +7,20 @@ import Language.Compiler.Combinators
 import Language.Compiler.Constants
 import Language.Compiler.Types
 
-import Control.Monad.State
-import Control.Monad.Identity
-
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Data.List (intercalate)
 import Data.Bits
 import Data.Int
 
 import System.Process
-import System.Exit
 
 import Language.Syntax
 import Data.ASM
 
 compile prog = do
   let compC = runCompC $ compileProgram prog
-      asm = T.unlines $ map (("    " <>) . formatASM) compC
-      output = header <> asm
+      asmCode = T.unlines $ map (("    " <>) . formatASM) compC
+      output = asmHeader <> asmCode
   T.writeFile "output.s" output
   runGCC
 
