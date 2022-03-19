@@ -11,7 +11,7 @@ import qualified Data.Text as T
 
 data CompState =
   CompState { asm :: [ASM]
-            , stackIndex :: Int32
+            , stackIndex :: Int64
             , env :: Env
             , labelCounter :: Int
             }
@@ -21,10 +21,10 @@ type CompC = StateT CompState Identity
 
 type Ident = T.Text
 
-type Env = M.Map Ident Int32
+type Env = M.Map Ident Int64
 emptyEnv = M.empty
 
-extendEnv :: Ident -> Int32 -> CompC ()
+extendEnv :: Ident -> Int64 -> CompC ()
 extendEnv v i =
   modify (\st -> st { env = M.insert v i (env st) })
 
@@ -47,9 +47,9 @@ runCompC c =
                     }
 
 data TypeRep =
-  TaggedRep { mask   :: Int32
-            , tag    :: Int32
+  TaggedRep { mask   :: Int64
+            , tag    :: Int64
             , tshift :: Int
             }
-  | ConstRep Int32
+  | ConstRep Int64
   deriving (Eq, Show)

@@ -33,24 +33,24 @@ compileProgram :: Program -> CompC ()
 compileProgram = mapM_ compileExpr
 
 compileExpr e = do
-  -- movl (RegisterOperand RDI) (RegisterOperand RSI)
+  movq rdi rsi
   emitExpr e
   ret
 
 emitExpr :: Expr -> CompC ()
 emitExpr (List [Atom "add1", e]) = do
   emitExpr e
-  addl (IntOperand (immediateRep (IntExpr 1))) eax
-emitExpr (List [Atom "integer->char", e@(IntExpr _)]) = do
+  addq (IntOperand (immediateRep (IntExpr 1))) rax
+emitExpr (List [Atom "integer->char", e]) = do
   emitExpr e
-  shl 6 EAX
-  orl (IntOperand (tag charRep)) eax
-emitExpr (List [Atom "char->integer", e@(Char _)]) = do
+  shlq 6 RAX
+  orq (IntOperand (tag charRep)) rax
+emitExpr (List [Atom "char->integer", e]) = do
   emitExpr e
-  shr 6 EAX
+  shrq 6 RAX
 emitExpr (List [Atom "zero?", e]) = do
   emitExpr e
-  cmpl (IntOperand 0) eax
+  cmpq (IntOperand 0) rax
   mkBoolFromFlag
 emitExpr (List [Atom "integer?", e]) = do
   emitExpr e
@@ -94,7 +94,7 @@ emitExpr (List [Atom "if", cond, conseq, alt]) = do
   l0 <- uniqueLabel
   l1 <- uniqueLabel
   emitExpr cond
-  cmpl (IntOperand (immediateRep (BoolExpr False))) eax
+  cmpq (IntOperand (immediateRep (BoolExpr False))) rax
   je l0
   emitExpr conseq
   jmp l1
@@ -104,35 +104,35 @@ emitExpr (List [Atom "if", cond, conseq, alt]) = do
 
 emitExpr (List [Atom "cons", e1, e2]) = do
   emitExpr e1
-  movl eax (0 % RSI)
+  movq rax (0 % RSI)
   emitExpr e2
-  movl eax (wordsize % RSI)
-  movl rsi eax
-  orl (i 1) eax
-  addl (i wordsize) rsi
+  movq rax (wordsize % RSI)
+  movq rsi rax
+  orq (i 1) rax
+  addq (i wordsize) rsi
 
 emitExpr (List [Atom "car", e]) = do
   emitExpr e
-  movl ((-1) % EAX) eax
+  movq ((-1) % RAX) rax
 
 emitExpr (List [Atom "cdr", e]) = do
   emitExpr e
-  movl (3 % EAX) eax
+  movq (7 % RAX) rax
 
 emitExpr (Atom v) =
   getVar v
 emitExpr e = do
-  movl (i (immediateRep e)) eax
+  movq (i (immediateRep e)) rax
 
 mkTypePredicate :: TypeRep -> CompC ()
 mkTypePredicate rep = do
-  andl (i (mask rep)) eax
-  cmpl (i (tag rep)) eax
+  andq (i (mask rep)) rax
+  cmpq (i (tag rep)) rax
   mkBoolFromFlag
 
-immediateRep :: Expr -> Int32
+immediateRep :: Expr -> Int64
 immediateRep (Char c) =
-  (toInt32 c `shift` tshift charRep) .|. (tag charRep)
+  (toInt64 c `shift` tshift charRep) .|. (tag charRep)
 immediateRep (IntExpr x) =
   (x `shift` tshift fixnumRep) .|. (tag fixnumRep)
 immediateRep (BoolExpr x) =
@@ -140,7 +140,8 @@ immediateRep (BoolExpr x) =
   in (b `shift` tshift boolRep) .|. (tag boolRep)
 immediateRep (List []) = c
   where ConstRep c = emptyListRep
-immediateRep _ = 0xBEEF
+immediateRep e =
+  error $ "unhandled expression: " <> show e
 
-toInt32 :: Enum a => a -> Int32
-toInt32 = fromIntegral . fromEnum
+toInt64 :: Enum a => a -> Int64
+toInt64 = fromIntegral . fromEnum

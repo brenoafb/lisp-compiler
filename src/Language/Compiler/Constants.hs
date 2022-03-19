@@ -26,7 +26,7 @@ boolRep =
 
 emptyListRep = ConstRep 0x2F
 
-wordsize :: Int32
+wordsize :: Int64
 wordsize = 8
 
 asmHeader =

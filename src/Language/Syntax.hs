@@ -22,7 +22,7 @@ type Ctx = [CtxFrame]
 data Expr = Atom       Ident
           | Char       Char
           | Str        T.Text
-          | IntExpr    Int32
+          | IntExpr    Int64
           | DoubleExpr Double
           | BoolExpr   Bool
           | Quote      Expr

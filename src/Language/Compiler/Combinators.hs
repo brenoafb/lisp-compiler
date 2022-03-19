@@ -11,25 +11,25 @@ emit :: ASM -> CompC ()
 emit instr =
   modify (\st -> st { asm = instr : (asm st)})
 
-movl x y = emit $ MOVL x y
-addl x r = emit $ ADDL x r
-subl x r = emit $ SUBL x r
-cmpl x r = emit $ CMPL x r
+movq x y = emit $ MOVQ x y
+addq x r = emit $ ADDQ x r
+subq x r = emit $ SUBQ x r
+cmpq x r = emit $ CMPQ x r
 label l = emit $ LABEL l
 jmp l = emit $ JMP l
 je l = emit $ JE l
 imul x r = emit $ IMUL x r
-sall x r = emit $ SALL x r
-orl x r = emit $ ORL x r
-andl x r = emit $ ANDL x r
+salq x r = emit $ SALQ x r
+orq x r = emit $ ORQ x r
+andq x r = emit $ ANDQ x r
 sete r = emit $ SETE r
-shr x r = emit $ SHR x r
-shl x r = emit $ SHL x r
-sar x r = emit $ SAR x r
+shrq x r = emit $ SHRQ x r
+shlq x r = emit $ SHLQ x r
+sarq x r = emit $ SARQ x r
 ret = emit RET
 push = do
   si <- getSI
-  movl eax (OffsetOperand si RSP)
+  movq rax (OffsetOperand si RSP)
   decSI
 
 decSI =
@@ -44,32 +44,32 @@ getVar v = do
   env <- env <$> get
   case M.lookup v env of
     Nothing -> error "unbound variable"
-    Just addr -> movl (OffsetOperand addr RSP) eax
+    Just addr -> movq (OffsetOperand addr RSP) rax
 
 mkBoolFromFlag = do
-  movl (i 0) eax
+  movq (i 0) rax
   sete al
-  sall (i 7) eax
-  orl (i 31) eax
+  salq (i 7) rax
+  orq (i 31) rax
 
 compareWithStack = do
   incSI
   si <- stackIndex <$> get
-  cmpl (OffsetOperand si RSP) eax
+  cmpq (OffsetOperand si RSP) rax
   mkBoolFromFlag
 
 mulWithStack = do
   incSI
   si <- stackIndex <$> get
-  imul (si % RSP) EAX
-  sar 2 EAX
+  imul (si % RSP) RAX
+  sarq 2 RAX
 
 addWithStack = do
   incSI
   si <- stackIndex <$> get
-  addl (si % RSP) eax
+  addq (si % RSP) rax
 
 subWithStack = do
   incSI
   si <- stackIndex <$> get
-  subl (si % RSP) eax
+  subq (si % RSP) rax
