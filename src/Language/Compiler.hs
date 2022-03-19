@@ -71,6 +71,8 @@ compileExpr (List [Atom "-", e1, e2]) = do
   push
   compileExpr e1
   subWithStack
+compileExpr (List [Atom "let", List bindings, body]) = do
+  undefined
 compileExpr e = do
   movli (immediateRep e) EAX
 
