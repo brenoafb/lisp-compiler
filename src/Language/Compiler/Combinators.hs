@@ -28,6 +28,12 @@ cmpl x r = emit $ CMPL x r
 cmpli x r = cmpl (IntOperand x) (RegisterOperand r)
 cmplo x r1 r2 = cmpl (OffsetOperand x r1) (RegisterOperand r2)
 
+label l = emit $ LABEL l
+
+jmp l = emit $ JMP l
+
+je l = emit $ JE l
+
 sall x r = emit $ SALL x r
 orl x r = emit $ ORL x r
 andl x r = emit $ ANDL x r

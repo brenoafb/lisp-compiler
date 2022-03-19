@@ -23,6 +23,9 @@ data ASM = MOVL Operand Operand
          | SHR  Int32 Register
          | SHL  Int32 Register
          | SETE Register
+         | LABEL T.Text
+         | JMP T.Text
+         | JE T.Text
          | RET
   deriving (Show, Eq)
 
@@ -59,6 +62,12 @@ formatASM (ANDL  x reg) = intRegOp "andl" x reg
 formatASM (SHR  x reg) = intRegOp "shr" x reg
 formatASM (SHL  x reg) = intRegOp "shl" x reg
 formatASM (SETE reg) = "sete" <> " " <> formatReg reg
+formatASM (JMP l) =
+  "jmp " <> l
+formatASM (JE l) =
+  "je " <> l
+formatASM (LABEL l) =
+  l <> ":"
 formatASM RET =
   "ret"
 

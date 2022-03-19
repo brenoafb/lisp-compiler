@@ -81,6 +81,18 @@ compileExpr (List [Atom "let", List bindings, body]) =
         extendEnv v si
         go xs
   in go bindings
+compileExpr (List [Atom "if", cond, conseq, alt]) = do
+  l0 <- uniqueLabel
+  l1 <- uniqueLabel
+  compileExpr cond
+  cmpli (immediateRep (BoolExpr False)) EAX
+  je l0
+  compileExpr conseq
+  jmp l1
+  label l0
+  compileExpr alt
+  label l1
+
 compileExpr (Atom v) =
   getVar v
 compileExpr e = do

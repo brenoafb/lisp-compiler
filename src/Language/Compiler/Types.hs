@@ -13,6 +13,7 @@ data CompState =
   CompState { asm :: [ASM]
             , stackIndex :: Int32
             , env :: Env
+            , labelCounter :: Int
             }
   deriving (Eq, Show)
 
@@ -27,12 +28,22 @@ extendEnv :: Ident -> Int32 -> CompC ()
 extendEnv v i =
   modify (\st -> st { env = M.insert v i (env st) })
 
+incrementLabelCounter =
+  modify (\st -> st { labelCounter = labelCounter st + 1 })
+
+uniqueLabel :: CompC T.Text
+uniqueLabel = do
+  counter <- labelCounter <$> get
+  incrementLabelCounter
+  pure . T.pack $ "L" <> show counter
+
 runCompC c =
   reverse . asm . runIdentity $ execStateT c initialState
   where initialState =
           CompState { asm = []
                     , stackIndex = (-8)
                     , env = emptyEnv
+                    , labelCounter = 0
                     }
 
 data TypeRep =
