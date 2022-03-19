@@ -12,32 +12,13 @@ emit instr =
   modify (\st -> st { asm = instr : (asm st)})
 
 movl x y = emit $ MOVL x y
-movli x r = movl (IntOperand x) (RegisterOperand r)
-movlo  x r1 r2 = movl (OffsetOperand x r1) (RegisterOperand r2)
-movlo' r1 r2 x = movl (RegisterOperand r1) (OffsetOperand x r2)
-
 addl x r = emit $ ADDL x r
-addli x r = addl (IntOperand x) (RegisterOperand r)
-addlo x r1 r2 = addl (OffsetOperand x r1) (RegisterOperand r2)
-
 subl x r = emit $ SUBL x r
-subli x r = subl (IntOperand x) (RegisterOperand r)
-sublo x r1 r2 = subl (OffsetOperand x r1) (RegisterOperand r2)
-
 cmpl x r = emit $ CMPL x r
-cmpli x r = cmpl (IntOperand x) (RegisterOperand r)
-cmplo x r1 r2 = cmpl (OffsetOperand x r1) (RegisterOperand r2)
-
 label l = emit $ LABEL l
-
 jmp l = emit $ JMP l
-
 je l = emit $ JE l
-
 imul x r = emit $ IMUL x r
-
-imulo x r1 r2 = imul (OffsetOperand x r1) r2
-
 sall x r = emit $ SALL x r
 orl x r = emit $ ORL x r
 andl x r = emit $ ANDL x r
@@ -48,7 +29,7 @@ sar x r = emit $ SAR x r
 ret = emit RET
 push = do
   si <- getSI
-  movlo' EAX RSP si
+  movl eax (OffsetOperand si RSP)
   decSI
 
 decSI =
@@ -63,32 +44,32 @@ getVar v = do
   env <- env <$> get
   case M.lookup v env of
     Nothing -> error "unbound variable"
-    Just addr -> movlo addr RSP EAX
+    Just addr -> movl (OffsetOperand addr RSP) eax
 
 mkBoolFromFlag = do
-  movli 0 EAX
-  sete AL
-  sall 7 EAX
-  orl 31 EAX
+  movl (i 0) eax
+  sete al
+  sall (i 7) eax
+  orl (i 31) eax
 
 compareWithStack = do
   incSI
   si <- stackIndex <$> get
-  cmplo si RSP EAX
+  cmpl (OffsetOperand si RSP) eax
   mkBoolFromFlag
 
 mulWithStack = do
   incSI
   si <- stackIndex <$> get
-  imulo si RSP EAX
+  imul (si % RSP) EAX
   sar 2 EAX
 
 addWithStack = do
   incSI
   si <- stackIndex <$> get
-  addlo si RSP EAX
+  addl (si % RSP) eax
 
 subWithStack = do
   incSI
   si <- stackIndex <$> get
-  sublo si RSP EAX
+  subl (si % RSP) eax

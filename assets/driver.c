@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #define fixnum_mask  3
 #define fixnum_tag   0
@@ -10,11 +11,14 @@
 #define bool_tag     0x1F
 #define bool_shift   7
 #define empty_list   0x2F
+#define HEAP_SIZE    8192
 
-extern int scheme_entry();
+extern int scheme_entry(void *heap);
 
 int main(int argc, char *argv[] ){
-  int val = scheme_entry();
+  void *heap = malloc(HEAP_SIZE);
+  // scheme_entry receives parameter in register rdi
+  int val = scheme_entry(heap);
 
   if ((val & fixnum_mask) == fixnum_tag) {
     printf("%d\n", val >> fixnum_shift);
@@ -28,6 +32,8 @@ int main(int argc, char *argv[] ){
   } else {
     printf("value error\n");
   }
+
+  free(heap);
 
   return 0;
 }

@@ -33,23 +33,24 @@ compileProgram :: Program -> CompC ()
 compileProgram = mapM_ compileExpr
 
 compileExpr e = do
+  -- movl (RegisterOperand RDI) (RegisterOperand RSI)
   emitExpr e
   ret
 
 emitExpr :: Expr -> CompC ()
 emitExpr (List [Atom "add1", e]) = do
   emitExpr e
-  addli (immediateRep (IntExpr 1)) EAX
+  addl (IntOperand (immediateRep (IntExpr 1))) eax
 emitExpr (List [Atom "integer->char", e@(IntExpr _)]) = do
   emitExpr e
   shl 6 EAX
-  orl (tag charRep) EAX
+  orl (IntOperand (tag charRep)) eax
 emitExpr (List [Atom "char->integer", e@(Char _)]) = do
   emitExpr e
   shr 6 EAX
 emitExpr (List [Atom "zero?", e]) = do
   emitExpr e
-  cmpli 0 EAX
+  cmpl (IntOperand 0) eax
   mkBoolFromFlag
 emitExpr (List [Atom "integer?", e]) = do
   emitExpr e
@@ -93,7 +94,7 @@ emitExpr (List [Atom "if", cond, conseq, alt]) = do
   l0 <- uniqueLabel
   l1 <- uniqueLabel
   emitExpr cond
-  cmpli (immediateRep (BoolExpr False)) EAX
+  cmpl (IntOperand (immediateRep (BoolExpr False))) eax
   je l0
   emitExpr conseq
   jmp l1
@@ -101,15 +102,32 @@ emitExpr (List [Atom "if", cond, conseq, alt]) = do
   emitExpr alt
   label l1
 
+emitExpr (List [Atom "cons", e1, e2]) = do
+  emitExpr e1
+  movl eax (0 % RSI)
+  emitExpr e2
+  movl eax (wordsize % RSI)
+  movl rsi eax
+  orl (i 1) eax
+  addl (i wordsize) rsi
+
+emitExpr (List [Atom "car", e]) = do
+  emitExpr e
+  movl ((-1) % EAX) eax
+
+emitExpr (List [Atom "cdr", e]) = do
+  emitExpr e
+  movl (3 % EAX) eax
+
 emitExpr (Atom v) =
   getVar v
 emitExpr e = do
-  movli (immediateRep e) EAX
+  movl (i (immediateRep e)) eax
 
 mkTypePredicate :: TypeRep -> CompC ()
 mkTypePredicate rep = do
-  andl (mask rep) EAX
-  cmpli (tag rep) EAX
+  andl (i (mask rep)) eax
+  cmpl (i (tag rep)) eax
   mkBoolFromFlag
 
 immediateRep :: Expr -> Int32

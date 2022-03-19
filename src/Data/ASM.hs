@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Data.ASM (ASM(..), Register(..), Operand(..), formatASM) where
+module Data.ASM where
 
 import qualified Data.Text as T
 
@@ -10,21 +10,31 @@ data Register = EAX
               | ESP
               | RAX
               | RSP
+              | RDI
+              | RSI
               | AL
   deriving (Show, Eq)
+
+eax = RegisterOperand EAX
+esp = RegisterOperand ESP
+rax = RegisterOperand RAX
+rsp = RegisterOperand RSP
+rdi = RegisterOperand RDI
+rsi = RegisterOperand RSI
+al = RegisterOperand AL
 
 data ASM = MOVL Operand Operand
          | ADDL Operand Operand
          | SUBL Operand Operand
          | CMPL Operand Operand
          | IMUL Operand Register
-         | SALL Int32 Register
-         | ORL  Int32 Register
-         | ANDL  Int32 Register
+         | SALL Operand Operand
+         | ORL  Operand Operand
+         | ANDL Operand Operand
          | SHR  Int32 Register
          | SHL  Int32 Register
          | SAR  Int32 Register
-         | SETE Register
+         | SETE Operand
          | LABEL T.Text
          | JMP T.Text
          | JE T.Text
@@ -35,6 +45,10 @@ data Operand = RegisterOperand Register
              | IntOperand Int32
              | OffsetOperand Int32 Register
              deriving (Eq, Show)
+
+i = IntOperand
+
+i % r = OffsetOperand i r
 
 formatOperand :: Operand -> T.Text
 formatOperand (RegisterOperand r) = formatReg r
@@ -47,6 +61,8 @@ formatReg EAX = "%eax"
 formatReg ESP = "%esp"
 formatReg RAX = "%rax"
 formatReg RSP = "%rsp"
+formatReg RDI = "%rdi"
+formatReg RSI = "%rsi"
 formatReg AL = "%al"
 
 formatASM :: ASM -> T.Text
@@ -60,13 +76,16 @@ formatASM (CMPL src dst) =
   format "cmpl" src dst
 formatASM (IMUL op r) =
   format "imul" op (RegisterOperand r)
-formatASM (SALL x reg) = intRegOp "sall" x reg
-formatASM (ORL  x reg) = intRegOp "orl" x reg
-formatASM (ANDL  x reg) = intRegOp "andl" x reg
+formatASM (SALL src dst) =
+  format "sall" src dst
+formatASM (ORL  src dst) =
+  format "orl" src dst
+formatASM (ANDL  src dst) =
+  format "andl" src dst
 formatASM (SHR  x reg) = intRegOp "shr" x reg
 formatASM (SHL  x reg) = intRegOp "shl" x reg
 formatASM (SAR  x reg) = intRegOp "sar" x reg
-formatASM (SETE reg) = "sete" <> " " <> formatReg reg
+formatASM (SETE x) = "sete" <> " " <> formatOperand x
 formatASM (JMP l) =
   "jmp " <> l
 formatASM (JE l) =
