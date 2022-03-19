@@ -8,11 +8,14 @@ import Data.Bits
 import Data.Int
 
 data Register = EAX
+              | ESP
+              | RAX
+              | RSP
               | AL
   deriving (Show, Eq)
 
-data ASM = MOVL Int32 Register
-         | ADDL Int32 Register
+data ASM = MOVL Operand Operand
+         | ADDL Operand Operand
          | CMPL Int32 Register
          | SALL Int32 Register
          | ORL  Int32 Register
@@ -23,13 +26,29 @@ data ASM = MOVL Int32 Register
          | RET
   deriving (Show, Eq)
 
+data Operand = RegisterOperand Register
+             | IntOperand Int32
+             | OffsetOperand Int32 Register
+             deriving (Eq, Show)
+
+formatOperand :: Operand -> T.Text
+formatOperand (RegisterOperand r) = formatReg r
+formatOperand (IntOperand x) = "$" <> show' x
+formatOperand (OffsetOperand x r) =
+  show' x <> "(" <> formatReg r <> ")"
+
 formatReg :: Register -> T.Text
 formatReg EAX = "%eax"
+formatReg ESP = "%esp"
+formatReg RAX = "%rax"
+formatReg RSP = "%rsp"
 formatReg AL = "%al"
 
 formatASM :: ASM -> T.Text
-formatASM (MOVL x reg) = intRegOp "movl" x reg
-formatASM (ADDL x reg) = intRegOp "addl" x reg
+formatASM (MOVL opSrc opDst) =
+  "movl" <> " " <> formatOperand opSrc <> ", " <> formatOperand opDst
+formatASM (ADDL opSrc opDst) =
+  "addl" <> " " <> formatOperand opSrc <> ", " <> formatOperand opDst
 formatASM (CMPL x reg) = intRegOp "cmpl" x reg
 formatASM (SALL x reg) = intRegOp "sall" x reg
 formatASM (ORL  x reg) = intRegOp "orl" x reg

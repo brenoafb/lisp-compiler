@@ -18,9 +18,17 @@ import System.Exit
 import Syntax
 import ASM
 
-type CompC = StateT [ASM] Identity
+data CompState =
+  CompState { asm :: [ASM]
+            , stackIndex :: Int32
+            }
+  deriving (Eq, Show)
 
-runCompC c = reverse $ runIdentity (execStateT c [])
+type CompC = StateT CompState Identity
+
+runCompC c =
+  reverse . asm . runIdentity $ execStateT c initialState
+  where initialState = CompState [] (-8)
 
 header =
   T.unlines [ "    .text"
@@ -38,14 +46,23 @@ compile prog = do
   runGCC
 
 runGCC = do
-  readProcessWithExitCode "gcc" (words "assets/driver.c output.s -o main") ""
+  readProcessWithExitCode "gcc" (words "-g assets/driver.c output.s -o main") ""
   pure ()
 
 emit :: ASM -> CompC ()
-emit instr = modify (instr :)
+emit instr =
+  modify (\st -> st { asm = instr : (asm st)})
 
-movl x r = emit $ MOVL x r
+wordsize = 8
+
+movl x y = emit $ MOVL x y
+movli x r = movl (IntOperand x) (RegisterOperand r)
+movlo  x r1 r2 = movl (OffsetOperand x r1) (RegisterOperand r2)
+movlo' r1 r2 x = movl (RegisterOperand r1) (OffsetOperand x r2)
+
 addl x r = emit $ ADDL x r
+addli x r = addl (IntOperand x) (RegisterOperand r)
+addlo x r1 r2 = addl (OffsetOperand x r1) (RegisterOperand r2)
 cmpl x r = emit $ CMPL x r
 sall x r = emit $ SALL x r
 orl x r = emit $ ORL x r
@@ -54,6 +71,21 @@ sete r = emit $ SETE r
 shr x r = emit $ SHR x r
 shl x r = emit $ SHL x r
 ret = emit RET
+push = do
+  si <- stackIndex <$> get
+  movlo' EAX RSP si
+  decSI
+
+decSI =
+  modify (\st -> st { stackIndex = stackIndex st - wordsize })
+
+incSI =
+  modify (\st -> st { stackIndex = stackIndex st + wordsize })
+
+addWithStack = do
+  incSI
+  si <- stackIndex <$> get
+  addlo si RSP EAX
 
 compileProgram :: Program -> CompC ()
 compileProgram = mapM_ compileExpr'
@@ -65,7 +97,7 @@ compileExpr' e = do
 compileExpr :: Expr -> CompC ()
 compileExpr (List [Atom "add1", e]) = do
   compileExpr e
-  addl (immediateRep (IntExpr 1)) EAX
+  addli (immediateRep (IntExpr 1)) EAX
 compileExpr (List [Atom "integer->char", e@(IntExpr _)]) = do
   compileExpr e
   shl 6 EAX
@@ -76,7 +108,7 @@ compileExpr (List [Atom "char->integer", e@(Char _)]) = do
 compileExpr (List [Atom "zero?", e]) = do
   compileExpr e
   cmpl 0 EAX
-  movl 0 EAX
+  movli 0 EAX
   sete AL
   sall 7 EAX
   orl 31 EAX
@@ -86,14 +118,20 @@ compileExpr (List [Atom "integer?", e]) = do
 compileExpr (List [Atom "boolean?", e]) = do
   compileExpr e
   mkTypePredicate boolRep
+compileExpr (List [Atom "+", e1, e2]) = do
+  compileExpr e2
+  push
+  compileExpr e1
+  addWithStack
 compileExpr e = do
-  movl (immediateRep e) EAX
+  movli (immediateRep e) EAX
+
 
 mkTypePredicate :: TypeRep -> CompC ()
 mkTypePredicate rep = do
   andl (mask rep) EAX
   cmpl (tag rep) EAX
-  movl 0 EAX
+  movli 0 EAX
   sete AL
   sall 7 EAX
   orl 31 EAX
