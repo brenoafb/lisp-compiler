@@ -27,10 +27,11 @@ extern int scheme_entry(void *heap);
 
 int main(int argc, char *argv[] ){
   void *heap = malloc(HEAP_SIZE);
+  // printf("heap: 0x%lX\n", heap);
   // scheme_entry receives parameter in register rdi
   int64_t val = scheme_entry(heap);
 
-  printf("0x%lX\n", val);
+  // printf("0x%lX\n", val);
 
   if ((val & fixnum_mask) == fixnum_tag) {
     printf("%ld\n", val >> fixnum_shift);

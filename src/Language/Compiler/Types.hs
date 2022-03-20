@@ -47,9 +47,10 @@ runCompC c =
                     }
 
 data TypeRep =
-  TaggedRep { mask   :: Int64
-            , tag    :: Int64
-            , tshift :: Int
-            }
+    ImmRep { mask   :: Int64
+           , tag    :: Int64
+           , tshift :: Int
+           }
+  | RefRep { refTag :: Int64 }
   | ConstRep Int64
   deriving (Eq, Show)

@@ -103,24 +103,31 @@ emitExpr (List [Atom "if", cond, conseq, alt]) = do
   label l1
 
 emitExpr (List [Atom "cons", e1, e2]) = do
-  emitExpr e1
-  movq rax (0 % RSI)
-  emitExpr e2
-  movq rax (wordsize % RSI)
   movq rsi rax
-  orq (i 1) rax
-  addq (i wordsize) rsi
+  orq (i (refTag pairRep)) rax
+  addq (i (2 * wordsize)) rsi
+  push               -- save ref
+  emitExpr e1
+  movq rax rbx
+  pop                -- restore ref
+  movq rbx (0 % RAX) -- save expression 1 result to first slot
+  push               -- save ref
+  emitExpr e2
+  movq rax rbx
+  pop
+  movq rbx (wordsize % RAX) -- save expression 2 result to second slot
 
 emitExpr (List [Atom "car", e]) = do
   emitExpr e
-  movq ((-1) % RAX) rax
+  movq (0 % RAX) rax
 
 emitExpr (List [Atom "cdr", e]) = do
   emitExpr e
-  movq (7 % RAX) rax
+  movq (wordsize % RAX) rax
 
 emitExpr (Atom v) =
   getVar v
+
 emitExpr e = do
   movq (i (immediateRep e)) rax
 

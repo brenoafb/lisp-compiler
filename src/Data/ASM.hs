@@ -10,16 +10,19 @@ data Register = EAX
               | ESP
               | EDI
               | RAX
+              | RBX
               | RSP
               | RDI
               | RSI
               | AL
+              | R1
   deriving (Show, Eq)
 
 eax = RegisterOperand EAX
 esp = RegisterOperand ESP
 edi = RegisterOperand EDI
 rax = RegisterOperand RAX
+rbx = RegisterOperand RBX
 rsp = RegisterOperand RSP
 rdi = RegisterOperand RDI
 rsi = RegisterOperand RSI
@@ -63,6 +66,7 @@ formatReg EAX = "%eax"
 formatReg ESP = "%esp"
 formatReg EDI = "%edi"
 formatReg RAX = "%rax"
+formatReg RBX = "%rbx"
 formatReg RSP = "%rsp"
 formatReg RDI = "%rdi"
 formatReg RSI = "%rsi"

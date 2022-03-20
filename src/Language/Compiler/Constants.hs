@@ -7,22 +7,37 @@ import Language.Compiler.Types
 import qualified Data.Text as T
 
 fixnumRep =
-  TaggedRep { mask  = 3
-          , tag   = 0
-          , tshift = 2
-          }
+  ImmRep { mask  = 3
+         , tag   = 0
+         , tshift = 2
+         }
 
 charRep =
-  TaggedRep { mask  = 0xFF
-          , tag   = 0x0E
-          , tshift = 8
-          }
+  ImmRep { mask  = 0xFF
+         , tag   = 0x0E
+         , tshift = 8
+         }
 
 boolRep =
-  TaggedRep { mask  = 0x3F
-          , tag   = 0x1F
-          , tshift = 7
-          }
+  ImmRep { mask  = 0x3F
+         , tag   = 0x1F
+         , tshift = 7
+         }
+
+pairRep =
+  RefRep 0x1
+
+vectorRep =
+  RefRep 0x2
+
+stringRep =
+  RefRep 0x3
+
+symbolRep =
+  RefRep 0x5
+
+closureRep =
+  RefRep 0x6
 
 emptyListRep = ConstRep 0x2F
 

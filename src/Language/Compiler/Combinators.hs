@@ -27,10 +27,16 @@ shrq x r = emit $ SHRQ x r
 shlq x r = emit $ SHLQ x r
 sarq x r = emit $ SARQ x r
 ret = emit RET
+
 push = do
   si <- getSI
   movq rax (OffsetOperand si RSP)
   decSI
+
+pop = do
+  incSI
+  si <- getSI
+  movq (OffsetOperand si RSP) rax
 
 decSI =
   modify (\st -> st { stackIndex = stackIndex st - wordsize })
@@ -43,7 +49,7 @@ getSI = stackIndex <$> get
 getVar v = do
   env <- env <$> get
   case M.lookup v env of
-    Nothing -> error "unbound variable"
+    Nothing -> error $ "unbound variable " <> show v
     Just addr -> movq (OffsetOperand addr RSP) rax
 
 mkBoolFromFlag = do
