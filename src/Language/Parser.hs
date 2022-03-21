@@ -32,7 +32,7 @@ parseStr :: T.Text -> Either ParseError Program
 parseStr str = parse program "" (T.unpack str)
 
 program :: Parser Program
-program = whiteSpace >> many expr
+program = whiteSpace >> expr
 
 expr :: Parser Expr
 expr = try doubleExpr

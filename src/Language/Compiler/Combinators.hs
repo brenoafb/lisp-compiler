@@ -1,6 +1,8 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Language.Compiler.Combinators where
 
 import Control.Monad.State
+import Control.Applicative
 import Data.ASM
 import Data.Int
 import Language.Compiler.Constants
@@ -15,6 +17,7 @@ movq x y = emit $ MOVQ x y
 addq x r = emit $ ADDQ x r
 subq x r = emit $ SUBQ x r
 cmpq x r = emit $ CMPQ x r
+call l = emit $ CALL l
 label l = emit $ LABEL l
 jmp l = emit $ JMP l
 je l = emit $ JE l
@@ -38,19 +41,30 @@ pop = do
   si <- getSI
   movq (OffsetOperand si RSP) rax
 
-decSI =
-  modify (\st -> st { stackIndex = stackIndex st - wordsize })
+resetSI :: CompC ()
+resetSI = setSI (-wordsize)
 
-incSI =
-  modify (\st -> st { stackIndex = stackIndex st + wordsize })
+decSI :: CompC ()
+decSI = modifySI (\si -> si - wordsize)
 
+incSI :: CompC ()
+incSI = modifySI (+ wordsize)
+
+getSI :: CompC Int64
 getSI = stackIndex <$> get
+
+setSI :: Int64 -> CompC ()
+setSI si = modifySI (const si)
+
+modifySI :: (Int64 -> Int64) -> CompC ()
+modifySI f =
+  modify (\st -> st { stackIndex = f $ stackIndex st })
 
 getVar v = do
   env <- env <$> get
-  case M.lookup v env of
-    Nothing -> error $ "unbound variable " <> show v
-    Just addr -> movq (OffsetOperand addr RSP) rax
+  case frameLookup v env of
+    [] -> error $ "unbound variable " <> show v
+    addr:_ -> movq (OffsetOperand addr RSP) rax
 
 mkBoolFromFlag = do
   movq (i 0) rax

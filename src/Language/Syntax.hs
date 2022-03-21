@@ -9,7 +9,7 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Int
 
-type Program = [Expr]
+type Program = Expr
 
 type Ident = T.Text
 type Frame = M.Map Ident Expr

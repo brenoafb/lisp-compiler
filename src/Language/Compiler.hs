@@ -26,16 +26,36 @@ compile prog = do
   runGCC
 
 runGCC = do
-  readProcessWithExitCode "gcc" (words "-g assets/driver.c output.s -o main") ""
+  readProcessWithExitCode "gcc" (words "-g assets/driver.c output.s --omit-frame-pointer -o main") ""
   pure ()
 
 compileProgram :: Program -> CompC ()
-compileProgram = mapM_ compileExpr
-
-compileExpr e = do
+compileProgram (List [Atom "labels", List lvars, body]) = do
   movq rdi rsi
-  emitExpr e
+  mainLabel <- uniqueLabel
+  jmp mainLabel
+  mapM_ (\(List [Atom lvar, lexpr]) -> do
+            l <- uniqueLabel
+            addLabel lvar l
+            label l
+            emitLexpr lexpr) lvars
+  label mainLabel
+  emitExpr body
   ret
+
+emitLexpr (List [Atom "code", List vars, body]) = do
+  let indices = map (* (-wordsize)) [1..]
+      acc = wordsize * (fromIntegral . length) vars
+  pushEnvFrame
+  modifySI (\si -> si - acc)
+  si <- getSI
+  mapM_ (\(Atom var, index) -> do
+            extendEnv var index
+        ) $ zip vars indices
+  emitExpr body
+  popEnvFrame
+  ret
+  resetSI
 
 emitExpr :: Expr -> CompC ()
 emitExpr (List [Atom "add1", e]) = do
@@ -127,6 +147,21 @@ emitExpr (List [Atom "cdr", e]) = do
 
 emitExpr (Atom v) =
   getVar v
+
+emitExpr (List ((Atom f):xs)) = do
+  l <- lookupLabel f
+  si <- getSI -- points to one below locals
+  -- skip one location for the return point
+  decSI
+  -- push args
+  mapM_ (\expr -> do
+            emitExpr expr
+            push) xs
+  -- set rsp to one word below return point
+  addq (i $ si + wordsize) rsp
+  -- go to function
+  call l
+  subq (i $ si + wordsize) rsp
 
 emitExpr e = do
   movq (i (immediateRep e)) rax

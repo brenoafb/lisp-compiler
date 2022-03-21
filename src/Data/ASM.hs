@@ -40,6 +40,7 @@ data ASM = MOVQ Operand Operand
          | SHLQ  Int64 Register
          | SARQ  Int64 Register
          | SETE Operand
+         | CALL T.Text
          | LABEL T.Text
          | JMP T.Text
          | JE T.Text
@@ -93,6 +94,8 @@ formatASM (SHRQ x reg) = intRegOp "shrq" x reg
 formatASM (SHLQ x reg) = intRegOp "shlq" x reg
 formatASM (SARQ  x reg) = intRegOp "sarq" x reg
 formatASM (SETE x) = "sete" <> " " <> formatOperand x
+formatASM (CALL l) =
+  "call " <> l
 formatASM (JMP l) =
   "jmp " <> l
 formatASM (JE l) =
