@@ -36,22 +36,22 @@ compileProgram (List [Atom "labels", List lvars, body]) = do
   jmp mainLabel
   mapM_ (\(List [Atom lvar, lexpr]) -> do
             l <- uniqueLabel
-            addLabel lvar l
+            extendEnv lvar (LabelLocation l)
             label l
             emitLexpr lexpr) lvars
   label mainLabel
   emitExpr body
   ret
 
-emitLexpr (List [Atom "code", List vars, body]) = do
+emitLexpr (List [Atom "code", List args, List freeVars, body]) = do
   let indices = map (* (-wordsize)) [1..]
-      acc = wordsize * (fromIntegral . length) vars
+      acc = wordsize * (fromIntegral . length) args
   pushEnvFrame
   modifySI (\si -> si - acc)
   si <- getSI
   mapM_ (\(Atom var, index) -> do
-            extendEnv var index
-        ) $ zip vars indices
+            extendEnv var (StackLocation index)
+        ) $ zip args indices
   emitExpr body
   popEnvFrame
   ret
@@ -106,7 +106,7 @@ emitExpr (List [Atom "let", List bindings, body]) = do
           si <- getSI
           emitExpr e
           push
-          extendEnv v si
+          extendEnv v (StackLocation si)
         _ -> error "bad let syntax")
     bindings
   emitExpr body
@@ -144,6 +144,9 @@ emitExpr (List [Atom "car", e]) = do
 emitExpr (List [Atom "cdr", e]) = do
   emitExpr e
   movq (wordsize % RAX) rax
+
+emitExpr (List ((Atom "closure") : (Atom lvar) : freeVars)) = do
+  undefined
 
 emitExpr (Atom v) =
   getVar v

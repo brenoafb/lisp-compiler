@@ -1,7 +1,8 @@
 (labels
-    ((add (code
-          (a b)
-          (let ((z 1))
-            (+ a (+ b z))))))
-  (let ((x 32))
-    (add x 1)))
+    ((factorial
+         (code
+          (n)
+          (if (= n 1)
+              1
+              (* n (factorial (- n 1)))))))
+  (factorial 5))

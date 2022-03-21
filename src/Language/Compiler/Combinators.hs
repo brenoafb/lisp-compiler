@@ -64,7 +64,9 @@ getVar v = do
   env <- gets env
   case frameLookup v env of
     [] -> error $ "unbound variable " <> show v
-    addr:_ -> movq (OffsetOperand addr RSP) rax
+    (StackLocation addr:_) -> movq (OffsetOperand addr RSP) rax
+    (ClosureLocation addr:_) -> movq (OffsetOperand addr RDI) rax
+    (LabelLocation label:_) -> error $ "identifier points to a label: " <> show v
 
 mkBoolFromFlag = do
   movq (i 0) rax
