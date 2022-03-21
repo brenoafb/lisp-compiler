@@ -174,12 +174,12 @@ mkTypePredicate rep = do
 
 immediateRep :: Expr -> Int64
 immediateRep (Char c) =
-  (toInt64 c `shift` tshift charRep) .|. (tag charRep)
+  (toInt64 c `shift` tshift charRep) .|. tag charRep
 immediateRep (IntExpr x) =
-  (x `shift` tshift fixnumRep) .|. (tag fixnumRep)
+  (x `shift` tshift fixnumRep) .|. tag fixnumRep
 immediateRep (BoolExpr x) =
   let b = if x then 1 else 0
-  in (b `shift` tshift boolRep) .|. (tag boolRep)
+  in (b `shift` tshift boolRep) .|. tag boolRep
 immediateRep (List []) = c
   where ConstRep c = emptyListRep
 immediateRep e =

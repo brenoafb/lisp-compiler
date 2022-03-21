@@ -15,7 +15,6 @@ data Register = EAX
               | RDI
               | RSI
               | AL
-              | R1
   deriving (Show, Eq)
 
 eax = RegisterOperand EAX

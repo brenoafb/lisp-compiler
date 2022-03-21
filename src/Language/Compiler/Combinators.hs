@@ -11,7 +11,7 @@ import qualified Data.Map as M
 
 emit :: ASM -> CompC ()
 emit instr =
-  modify (\st -> st { asm = instr : (asm st)})
+  modify (\st -> st { asm = instr : asm st})
 
 movq x y = emit $ MOVQ x y
 addq x r = emit $ ADDQ x r
@@ -51,7 +51,7 @@ incSI :: CompC ()
 incSI = modifySI (+ wordsize)
 
 getSI :: CompC Int64
-getSI = stackIndex <$> get
+getSI = gets stackIndex
 
 setSI :: Int64 -> CompC ()
 setSI si = modifySI (const si)
@@ -61,7 +61,7 @@ modifySI f =
   modify (\st -> st { stackIndex = f $ stackIndex st })
 
 getVar v = do
-  env <- env <$> get
+  env <- gets env
   case frameLookup v env of
     [] -> error $ "unbound variable " <> show v
     addr:_ -> movq (OffsetOperand addr RSP) rax
@@ -74,22 +74,22 @@ mkBoolFromFlag = do
 
 compareWithStack = do
   incSI
-  si <- stackIndex <$> get
+  si <- gets stackIndex
   cmpq (OffsetOperand si RSP) rax
   mkBoolFromFlag
 
 mulWithStack = do
   incSI
-  si <- stackIndex <$> get
+  si <- gets stackIndex
   imul (si % RSP) RAX
   sarq 2 RAX
 
 addWithStack = do
   incSI
-  si <- stackIndex <$> get
+  si <- gets stackIndex
   addq (si % RSP) rax
 
 subWithStack = do
   incSI
-  si <- stackIndex <$> get
+  si <- gets stackIndex
   subq (si % RSP) rax
