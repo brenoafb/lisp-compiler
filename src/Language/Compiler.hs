@@ -46,16 +46,17 @@ compileProgram (List [Atom "labels", List lvars, body]) = do
 compileProgram _ = error "malformed program"
 
 emitLexpr (List [Atom "code", List args, List freeVars, body]) = do
-  let indices = map (* (-wordsize)) [1..]
+  let argIndices = map (* (-wordsize)) [1..]
+      freeVarIndices = map (* wordsize) [1..]
       acc = wordsize * (fromIntegral . length) args
   pushEnvFrame
   modifySI (\si -> si - acc) -- set SI to point after arguments
   mapM_ (\(Atom var, index) -> do
             extendEnv var (StackLocation index)
-        ) $ zip args indices
+        ) $ zip args argIndices
   mapM_ (\(Atom var, index) -> do
             extendEnv var (ClosureLocation index)
-        ) $ zip freeVars indices
+        ) $ zip freeVars freeVarIndices
   emitExpr body
   popEnvFrame
   ret
