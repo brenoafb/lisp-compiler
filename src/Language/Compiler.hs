@@ -12,6 +12,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.Bits
 import Data.Int
+import Debug.Trace (trace)
 
 import System.Process hiding (env)
 
@@ -42,22 +43,28 @@ compileProgram (List [Atom "labels", List lvars, body]) = do
   label mainLabel
   emitExpr body
   ret
+compileProgram _ = error "malformed program"
 
 emitLexpr (List [Atom "code", List args, List freeVars, body]) = do
   let indices = map (* (-wordsize)) [1..]
       acc = wordsize * (fromIntegral . length) args
   pushEnvFrame
-  modifySI (\si -> si - acc)
-  si <- getSI
+  modifySI (\si -> si - acc) -- set SI to point after arguments
   mapM_ (\(Atom var, index) -> do
             extendEnv var (StackLocation index)
         ) $ zip args indices
+  mapM_ (\(Atom var, index) -> do
+            extendEnv var (ClosureLocation index)
+        ) $ zip freeVars indices
   emitExpr body
   popEnvFrame
   ret
   resetSI
+emitLexpr _ = error "malformed lexpr"
 
 emitExpr :: Expr -> CompC ()
+emitExpr (Atom v) =
+  getVar v
 emitExpr (List [Atom "add1", e]) = do
   emitExpr e
   addq (IntOperand (immediateRep (IntExpr 1))) rax
@@ -146,14 +153,23 @@ emitExpr (List [Atom "cdr", e]) = do
   movq (wordsize % RAX) rax
 
 emitExpr (List ((Atom "closure") : (Atom lvar) : freeVars)) = do
-  undefined
-
-emitExpr (Atom v) =
-  getVar v
+  let indices = map (* wordsize) [1..]
+      increment = wordsize * (1 + fromIntegral (length freeVars))
+  lbl <- lookupLabel lvar
+  leaq (PCOffsetOperand lbl) rbx
+  movq rbx (0 % RSI)
+  mapM_ (\(Atom freeVar, index) -> do
+            getVar freeVar
+            movq rax (index % RSI))
+        $ zip freeVars indices
+  movq rsi rax
+  orq (IntOperand (refTag closureRep)) rax
+  addq (IntOperand increment) rsi
 
 emitExpr (List ((Atom f):xs)) = do
-  l <- lookupLabel f
+  lbl <- lookupLabel f
   si <- getSI -- points to one below locals
+  trace ("atom f si : " <> show si) $ pure ()
   -- skip one location for the return point
   decSI
   -- push args
@@ -163,8 +179,31 @@ emitExpr (List ((Atom f):xs)) = do
   -- set rsp to one word below return point
   addq (i $ si + wordsize) rsp
   -- go to function
-  call l
+  call (l lbl)
   subq (i $ si + wordsize) rsp
+
+emitExpr (List (f:xs)) = do -- TODO
+  si <- getSI -- points to one below locals
+  trace ("si : " <> show si) $ pure ()
+  -- skip one location for the return point
+  decSI
+  -- skip another location for the closure pointer
+  decSI
+  -- push args
+  mapM_ (\expr -> do
+            emitExpr expr
+            push) xs
+  emitExpr f
+  andq (i $ complement $ refTag closureRep) rax -- clear the tag
+  movq (0 % RAX) rbx -- rbx contains the pointer to the routine
+  movq rdi (si % RSP) -- save rdi
+  movq rax rdi
+  -- set rsp to two words below return point
+  addq (i $ si + wordsize) rsp
+  -- go to function
+  call rbx
+  subq (i $ si + wordsize) rsp
+  movq (si % RSP) rdi -- restore rdi
 
 emitExpr e = do
   movq (i (immediateRep e)) rax

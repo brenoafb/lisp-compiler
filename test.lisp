@@ -1,8 +1,2 @@
-(labels
-    ((factorial
-         (code
-          (n)
-          (if (= n 1)
-              1
-              (* n (factorial (- n 1)))))))
-  (factorial 5))
+(labels ((f0 (code (x y) () (+ x y))))
+  (closure f0))

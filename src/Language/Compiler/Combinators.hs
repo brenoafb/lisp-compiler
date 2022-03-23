@@ -17,6 +17,7 @@ movq x y = emit $ MOVQ x y
 addq x r = emit $ ADDQ x r
 subq x r = emit $ SUBQ x r
 cmpq x r = emit $ CMPQ x r
+leaq x r = emit $ LEAQ x r
 call l = emit $ CALL l
 label l = emit $ LABEL l
 jmp l = emit $ JMP l
@@ -30,6 +31,7 @@ shrq x r = emit $ SHRQ x r
 shlq x r = emit $ SHLQ x r
 sarq x r = emit $ SARQ x r
 ret = emit RET
+comment c = emit $ Comment c
 
 push = do
   si <- getSI
