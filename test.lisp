@@ -1,2 +1,2 @@
-(labels ((f0 (code (y) (x) (+ x y))))
-  (let ((x 9)) ((closure f0 x) 11)))
+(labels ((f0 (code (y) (x) (if (= x 0) 1 y))))
+  (let ((x 0)) ((closure f0 x) 3)))
