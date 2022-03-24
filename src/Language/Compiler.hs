@@ -200,10 +200,10 @@ emitExpr (List (f:xs)) = do -- TODO
   movq rdi (si % RSP) -- save rdi
   movq rax rdi
   -- set rsp to two words below return point
-  addq (i $ si + wordsize) rsp
+  addq (i si) rsp
   -- go to function
-  call rbx
-  subq (i $ si + wordsize) rsp
+  call _rbx
+  subq (i si) rsp
   movq (si % RSP) rdi -- restore rdi
 
 emitExpr e = do

@@ -19,6 +19,7 @@ data Register = EAX
   deriving (Show, Eq)
 
 data Operand = RegisterOperand Register
+             | StarRegisterOperand Register
              | IntOperand Int64
              | OffsetOperand Int64 Register
              | LabelOperand T.Text
@@ -35,6 +36,8 @@ rdi = RegisterOperand RDI
 rsi = RegisterOperand RSI
 rip = RegisterOperand RIP
 al = RegisterOperand AL
+
+_rbx = StarRegisterOperand RBX
 
 data ASM = MOVQ Operand Operand
          | ADDQ Operand Operand
@@ -65,6 +68,7 @@ i % r = OffsetOperand i r
 
 formatOperand :: Operand -> T.Text
 formatOperand (RegisterOperand r) = formatReg r
+formatOperand (StarRegisterOperand r) = "*" <> formatReg r
 formatOperand (IntOperand x) = "$" <> show' x
 formatOperand (OffsetOperand x r) =
   show' x <> "(" <> formatReg r <> ")"
