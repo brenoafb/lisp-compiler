@@ -12,7 +12,6 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.Bits
 import Data.Int
-import Debug.Trace (trace)
 
 import System.Process hiding (env)
 
@@ -170,7 +169,6 @@ emitExpr (List ((Atom "closure") : (Atom lvar) : freeVars)) = do
 emitExpr (List ((Atom f):xs)) = do
   lbl <- lookupLabel f
   si <- getSI -- points to one below locals
-  trace ("atom f si : " <> show si) $ pure ()
   -- skip one location for the return point
   decSI
   -- push args
@@ -185,7 +183,6 @@ emitExpr (List ((Atom f):xs)) = do
 
 emitExpr (List (f:xs)) = do -- TODO
   si <- getSI -- points to one below locals
-  trace ("si : " <> show si) $ pure ()
   -- skip one location for the return point
   decSI
   -- skip another location for the closure pointer
