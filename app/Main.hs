@@ -6,6 +6,8 @@ import qualified Data.Text.IO as T
 
 import Language.Parser
 import Language.Compiler
+import Language.Compiler.Desugar
+import Language.Syntax
 
 main :: IO ()
 main = do
@@ -15,5 +17,6 @@ main = do
       input <- T.readFile filename
       case parseStr input of
         Left err -> print err
-        Right prog ->
-          compile prog
+        Right prog -> do
+          let desugared = desugarExpr prog
+          compile desugared

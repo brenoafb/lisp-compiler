@@ -23,7 +23,7 @@ normalizeExpr e =
     where lambdas = findLambdas e
           labels = map (\n -> T.pack $ "f" <> show n) [0..]
           labelPairs = zip lambdas labels
-          codeLabels = map (\(lambda, label) -> List [Atom label, lambdaToCode lambda]) labelPairs -- TODO replace lambda with code form
+          codeLabels = map (\(lambda, label) -> List [Atom label, lambdaToCode lambda]) labelPairs
           senv = M.fromList labelPairs
           body = everywhere (mkT (lambdaToClosure senv)) e
 
@@ -40,8 +40,9 @@ annotateLambdaFreeVariables (List [Atom "lambda", List args, body]) =
 annotateLambdaFreeVariables e = e
 
 findFreeVariables :: [Ident] -> Expr -> [Ident]
-findFreeVariables args e = atoms \\ args -- TODO don't mark primitives as free variables
+findFreeVariables args e = atoms \\ (args ++ primitives)
   where atoms = findAtoms e
+        primitives = ["+"] -- TODO find a better solution for this
 
 findAtoms :: Expr -> [Ident]
 findAtoms = nub . everything (<>) ([] `mkQ` atom)
