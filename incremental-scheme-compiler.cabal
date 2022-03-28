@@ -44,6 +44,7 @@ library
     , hspec
     , mtl
     , parsec
+    , pretty-simple
     , process
     , syb
     , text
@@ -65,6 +66,7 @@ executable incremental-scheme-compiler-exe
     , incremental-scheme-compiler
     , mtl
     , parsec
+    , pretty-simple
     , process
     , syb
     , text
@@ -87,6 +89,7 @@ test-suite incremental-scheme-compiler-test
     , incremental-scheme-compiler
     , mtl
     , parsec
+    , pretty-simple
     , process
     , syb
     , text

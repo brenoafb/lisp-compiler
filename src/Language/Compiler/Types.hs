@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Language.Compiler.Types where
 
 import Data.ASM
@@ -29,6 +30,7 @@ type Label = T.Text
 
 data Location = StackLocation   Int64
               | ClosureLocation Int64
+              | HeapLocation    Int64
               | LabelLocation   Label
               deriving (Eq, Show)
 
@@ -64,7 +66,7 @@ envLookup :: Ident -> CompC Location
 envLookup ident = do
   env <- gets env
   case frameLookup ident env of
-    [] -> error $ "Unbound variable: " <> show ident
+    [] -> error $ "envLookup: Unbound variable: " <> show ident
     (x:xs) -> pure x
 
 lookupStack :: Ident -> CompC Int64
@@ -72,23 +74,29 @@ lookupStack x = do
   lookup <- envLookup x
   case lookup of
     StackLocation l -> pure l
-    _ -> error $ "undefined label variable " <> (show x)
+    _ -> error $ "undefined variable " <> show x
 
 lookupLabel :: Ident -> CompC Label
 lookupLabel x = do
   lookup <- envLookup x
   case lookup of
     LabelLocation l -> pure l
-    _ -> error $ "undefined label variable " <> (show x)
+    _ -> error $ "undefined label variable " <> show x
 
 incrementLabelCounter =
   modify (\st -> st { labelCounter = labelCounter st + 1 })
 
 uniqueLabel :: CompC T.Text
 uniqueLabel = do
-  counter <- labelCounter <$> get
+  counter <- gets labelCounter
   incrementLabelCounter
   pure . T.pack $ "L" <> show counter
+
+uniqueLabel' :: T.Text -> CompC T.Text
+uniqueLabel' p = do
+  counter <- gets labelCounter
+  incrementLabelCounter
+  pure $ p <> "_" <> T.pack (show counter)
 
 runCompC :: CompC a -> [ASM]
 runCompC c =

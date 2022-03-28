@@ -89,6 +89,10 @@ formatReg RSI = "%rsi"
 formatReg RIP = "%rip"
 formatReg AL = "%al"
 
+formatASM' :: ASM -> T.Text
+formatASM' a@(LABEL _) = formatASM a
+formatASM' a = "    " <> formatASM a
+
 formatASM :: ASM -> T.Text
 formatASM (MOVQ src dst) =
   format "movq" src dst
@@ -122,7 +126,7 @@ formatASM (LABEL l) =
   l <> ":"
 formatASM RET =
   "ret"
-formatASM (Comment c) = "; " <> c
+formatASM (Comment c) = "# " <> c
 
 intRegOp i x reg = i <> " $" <> show' x <> ", " <> formatReg reg
 

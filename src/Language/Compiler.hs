@@ -20,7 +20,7 @@ import Data.ASM
 
 compile prog = do
   let compC = runCompC $ compileProgram prog
-      asmCode = T.unlines $ map (("    " <>) . formatASM) compC
+      asmCode = T.unlines $ map formatASM' compC
       output = asmHeader <> asmCode
   T.writeFile "output.s" output
   runGCC
@@ -32,10 +32,10 @@ runGCC = do
 compileProgram :: Program -> CompC ()
 compileProgram (List [Atom "labels", List lvars, body]) = do
   movq rdi rsi
-  mainLabel <- uniqueLabel
+  let mainLabel = "main"
   jmp mainLabel
   mapM_ (\(List [Atom lvar, lexpr]) -> do
-            l <- uniqueLabel
+            l <- uniqueLabel' lvar
             extendEnv lvar (LabelLocation l)
             label l
             emitLexpr lexpr) lvars
@@ -56,6 +56,7 @@ emitLexpr (List [Atom "code", List args, List freeVars, body]) = do
   mapM_ (\(Atom var, index) -> do
             extendEnv var (ClosureLocation index)
         ) $ zip freeVars freeVarIndices
+  env <- gets env
   emitExpr body
   popEnvFrame
   ret
@@ -63,49 +64,61 @@ emitLexpr (List [Atom "code", List args, List freeVars, body]) = do
 emitLexpr _ = error "malformed lexpr"
 
 emitExpr :: Expr -> CompC ()
-emitExpr (Atom v) =
+emitExpr (Atom v) = do
+  comment $ "variable: " <> v
   getVar v
 emitExpr (List [Atom "add1", e]) = do
+  comment "add1"
   emitExpr e
   addq (IntOperand (immediateRep (IntExpr 1))) rax
 emitExpr (List [Atom "integer->char", e]) = do
+  comment "integer->char"
   emitExpr e
   shlq 6 RAX
   orq (IntOperand (tag charRep)) rax
 emitExpr (List [Atom "char->integer", e]) = do
+  comment "char->integer"
   emitExpr e
   shrq 6 RAX
 emitExpr (List [Atom "zero?", e]) = do
+  comment "zero?"
   emitExpr e
   cmpq (IntOperand 0) rax
   mkBoolFromFlag
 emitExpr (List [Atom "integer?", e]) = do
+  comment "integer?"
   emitExpr e
   mkTypePredicate fixnumRep
 emitExpr (List [Atom "boolean?", e]) = do
+  comment "boolean?"
   emitExpr e
   mkTypePredicate boolRep
 emitExpr (List [Atom "=", e1, e2]) = do
+  comment "="
   emitExpr e2
   push
   emitExpr e1
   compareWithStack
 emitExpr (List [Atom "*", e1, e2]) = do
+  comment "*"
   emitExpr e2
   push
   emitExpr e1
   mulWithStack
 emitExpr (List [Atom "+", e1, e2]) = do
+  comment "+"
   emitExpr e2
   push
   emitExpr e1
   addWithStack
 emitExpr (List [Atom "-", e1, e2]) = do
+  comment "-"
   emitExpr e2
   push
   emitExpr e1
   subWithStack
 emitExpr (List [Atom "let", List bindings, body]) = do
+  comment "let"
   mapM_
     (\binding ->
       case binding of
@@ -117,9 +130,32 @@ emitExpr (List [Atom "let", List bindings, body]) = do
         _ -> error "bad let syntax")
     bindings
   emitExpr body
+emitExpr (List [Atom "letrec", List bindings, body]) = do
+  comment "letrec"
+  mapM_ (\(i, binding) -> do
+      case binding of
+        List [Atom v, _] -> do
+          si <- getSI
+          let index = si - i * wordsize
+          -- extendEnv v (StackLocation index)
+          extendEnv v (HeapLocation index)
+        _ -> error "bad letrec syntax") $ zip [0..] bindings
+  mapM_
+    (\binding ->
+      case binding of
+        List [Atom v, e] -> do
+          si <- getSI
+          heapAlloc e
+          -- emitExpr e
+          comment $ "setting letrec binding: " <> v
+          push
+        _ -> error "bad letrec syntax")
+    bindings
+  emitExpr body
 emitExpr (List [Atom "if", cond, conseq, alt]) = do
-  l0 <- uniqueLabel
-  l1 <- uniqueLabel
+  comment $ "if " <> display cond <> " " <> display conseq <> " " <> display alt
+  l0 <- uniqueLabel' "alt"
+  l1 <- uniqueLabel' "conseq"
   emitExpr cond
   cmpq (IntOperand (immediateRep (BoolExpr False))) rax
   je l0
@@ -129,7 +165,12 @@ emitExpr (List [Atom "if", cond, conseq, alt]) = do
   emitExpr alt
   label l1
 
+emitExpr (List [Atom "ref", e]) = do
+  emitExpr e
+  movq (OffsetOperand 0 RAX) rax
+
 emitExpr (List [Atom "cons", e1, e2]) = do
+  comment $ "cons " <> display e1 <> " " <> display e2
   movq rsi rax
   orq (i (refTag pairRep)) rax
   addq (i (2 * wordsize)) rsi
@@ -145,14 +186,17 @@ emitExpr (List [Atom "cons", e1, e2]) = do
   movq rbx (wordsize % RAX) -- save expression 2 result to second slot
 
 emitExpr (List [Atom "car", e]) = do
+  comment "car"
   emitExpr e
   movq (0 % RAX) rax
 
 emitExpr (List [Atom "cdr", e]) = do
+  comment "cdr"
   emitExpr e
   movq (wordsize % RAX) rax
 
 emitExpr (List ((Atom "closure") : (Atom lvar) : freeVars)) = do
+  comment $ "closure lvar: " <> lvar
   let indices = map (* wordsize) [1..]
       increment = wordsize * (1 + fromIntegral (length freeVars))
   lbl <- lookupLabel lvar
@@ -166,22 +210,9 @@ emitExpr (List ((Atom "closure") : (Atom lvar) : freeVars)) = do
   orq (IntOperand (refTag closureRep)) rax
   addq (IntOperand increment) rsi
 
-emitExpr (List ((Atom f):xs)) = do
-  lbl <- lookupLabel f
-  si <- getSI -- points to one below locals
-  -- skip one location for the return point
-  decSI
-  -- push args
-  mapM_ (\expr -> do
-            emitExpr expr
-            push) xs
-  -- set rsp to one word below return point
-  addq (i $ si + wordsize) rsp
-  -- go to function
-  call (l lbl)
-  subq (i $ si + wordsize) rsp
-
-emitExpr (List (f:xs)) = do -- TODO
+emitExpr (List (f:xs)) = do
+  comment "function call"
+  env <- gets env
   si <- getSI -- points to one below locals
   -- skip one location for the return point
   decSI
@@ -191,23 +222,15 @@ emitExpr (List (f:xs)) = do -- TODO
   mapM_ (\expr -> do
             emitExpr expr
             push) xs
-  emitExpr f
-  andq (i $ complement $ refTag closureRep) rax -- clear the tag
-  movq (0 % RAX) rbx -- rbx contains the pointer to the routine
-  movq rdi (si % RSP) -- save rdi
-  movq rax rdi
-  -- set rsp to two words below return point
-  addq (i si) rsp
-  -- go to function
-  call _rbx
-  subq (i si) rsp
-  movq (si % RSP) rdi -- restore rdi
+  callClosure si f
 
 emitExpr e = do
+  comment $ "immediateRep: " <> display e
   movq (i (immediateRep e)) rax
 
 mkTypePredicate :: TypeRep -> CompC ()
 mkTypePredicate rep = do
+  comment "type predicate"
   andq (i (mask rep)) rax
   cmpq (i (tag rep)) rax
   mkBoolFromFlag
@@ -227,3 +250,27 @@ immediateRep e =
 
 toInt64 :: Enum a => a -> Int64
 toInt64 = fromIntegral . fromEnum
+
+heapAlloc e = do
+  comment $ "heapAlloc " <> display e
+  movq rsi rax
+  -- orq (i (refTag vectorRep)) rax
+  addq (i wordsize) rsi
+  push               -- save ref
+  emitExpr e
+  movq rax rbx
+  pop                -- restore ref
+  movq rbx (0 % RAX) -- save expression 1 result to first slot
+
+callClosure si f = do
+  emitExpr f
+  andq (i $ complement $ refTag closureRep) rax -- clear the tag
+  movq (0 % RAX) rbx -- rbx contains the pointer to the routine
+  movq rdi (si % RSP) -- save rdi
+  movq rax rdi
+  -- set rsp to two words below return point
+  addq (i si) rsp
+  -- go to function
+  call _rbx
+  subq (i si) rsp
+  movq (si % RSP) rdi -- restore rdi

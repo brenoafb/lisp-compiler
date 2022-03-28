@@ -29,6 +29,7 @@ dependencies:
 - unordered-containers
 - process
 - syb
+- pretty-simple
 - hashable
 
 library:

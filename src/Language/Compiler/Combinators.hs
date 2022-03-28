@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Language.Compiler.Combinators where
 
 import Control.Monad.State
@@ -65,10 +66,14 @@ modifySI f =
 getVar v = do
   env <- gets env
   case frameLookup v env of
-    [] -> error $ "unbound variable " <> show v
+    [] -> error $ "getVar: unbound variable " <> show v
     (StackLocation addr:_) -> movq (OffsetOperand addr RSP) rax
     (ClosureLocation addr:_) -> movq (OffsetOperand addr RDI) rax
     (LabelLocation label:_) -> error $ "identifier points to a label: " <> show v
+    (HeapLocation addr:_) -> do
+      comment $ v <> ": fetching heap location"
+      movq (OffsetOperand addr RSP) rax -- rax contains pointer to value
+      -- movq (OffsetOperand 0 RAX) rax
 
 mkBoolFromFlag = do
   movq (i 0) rax
