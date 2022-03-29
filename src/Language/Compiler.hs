@@ -18,15 +18,18 @@ import System.Process hiding (env)
 import Language.Syntax
 import Data.ASM
 
+compile :: Expr -> IO ()
 compile prog = do
   let compC = runCompC $ compileProgram prog
       asmCode = T.unlines $ map formatASM' compC
       output = asmHeader <> asmCode
-  T.writeFile "output.s" output
-  runGCC
+      filename = "output.s"
+  T.writeFile filename output
+  bundle filename
 
-runGCC = do
-  readProcessWithExitCode "gcc" (words "-g assets/driver.c output.s --omit-frame-pointer -o main") ""
+bundle :: FilePath -> IO ()
+bundle filename = do
+  readProcessWithExitCode "gcc" (words $ "-g assets/driver.c " <> filename <> " --omit-frame-pointer -o main") ""
   pure ()
 
 compileProgram :: Program -> CompC ()
@@ -137,16 +140,13 @@ emitExpr (List [Atom "letrec", List bindings, body]) = do
         List [Atom v, _] -> do
           si <- getSI
           let index = si - i * wordsize
-          -- extendEnv v (StackLocation index)
           extendEnv v (HeapLocation index)
         _ -> error "bad letrec syntax") $ zip [0..] bindings
   mapM_
     (\binding ->
       case binding of
         List [Atom v, e] -> do
-          si <- getSI
           heapAlloc e
-          -- emitExpr e
           comment $ "setting letrec binding: " <> v
           push
         _ -> error "bad letrec syntax")
@@ -212,7 +212,6 @@ emitExpr (List ((Atom "closure") : (Atom lvar) : freeVars)) = do
 
 emitExpr (List (f:xs)) = do
   comment "function call"
-  env <- gets env
   si <- getSI -- points to one below locals
   -- skip one location for the return point
   decSI

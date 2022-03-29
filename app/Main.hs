@@ -12,14 +12,17 @@ import Language.Syntax
 
 main :: IO ()
 main = do
-  args <- getArgs
-  case args of
-    [filename] -> do
-      input <- T.readFile filename
-      case parseStr input of
-        Left err -> print err
-        Right prog -> do
-          let desugared = desugarExpr prog
-          pPrint desugared
-          T.putStrLn $ display desugared
-          compile desugared
+  getArgs >>= handler
+
+handler [filename] = do
+  input <- T.readFile filename
+  case parseStr input of
+    Left err -> print err
+    Right prog -> do
+      let desugared = desugarExpr prog
+      pPrint desugared
+      T.putStrLn $ display desugared
+      compile desugared
+
+handler _ =
+  putStrLn "usage: stack run -- [filename]"

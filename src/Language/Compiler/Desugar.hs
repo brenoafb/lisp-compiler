@@ -43,7 +43,7 @@ findFreeVariables :: [Ident] -> Expr -> [Ident]
 findFreeVariables args e = atoms \\ (args ++ primitives)
   where atoms = findAtoms e
         primitives = -- TODO find a better solution for this
-          ["cons", "ref", "*", "+", "-", "zero?", "if"]
+          ["cons", "ref", "*", "+", "-", "=", "zero?", "if"]
 
 findAtoms :: Expr -> [Ident]
 findAtoms = nub . everything (<>) ([] `mkQ` atom)
