@@ -29,6 +29,7 @@ library
       Language.Compiler
       Language.Compiler.Combinators
       Language.Compiler.Constants
+      Language.Compiler.Desugar
       Language.Compiler.Types
       Language.Parser
       Language.Syntax
@@ -39,11 +40,15 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , hashable
     , hspec
     , mtl
     , parsec
+    , pretty-simple
     , process
+    , syb
     , text
+    , unordered-containers
   default-language: Haskell2010
 
 executable incremental-scheme-compiler-exe
@@ -56,12 +61,16 @@ executable incremental-scheme-compiler-exe
   build-depends:
       base >=4.7 && <5
     , containers
+    , hashable
     , hspec
     , incremental-scheme-compiler
     , mtl
     , parsec
+    , pretty-simple
     , process
+    , syb
     , text
+    , unordered-containers
   default-language: Haskell2010
 
 test-suite incremental-scheme-compiler-test
@@ -75,10 +84,14 @@ test-suite incremental-scheme-compiler-test
   build-depends:
       base >=4.7 && <5
     , containers
+    , hashable
     , hspec
     , incremental-scheme-compiler
     , mtl
     , parsec
+    , pretty-simple
     , process
+    , syb
     , text
+    , unordered-containers
   default-language: Haskell2010

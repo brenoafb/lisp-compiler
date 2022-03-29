@@ -26,7 +26,11 @@ dependencies:
 - text
 - mtl
 - containers
+- unordered-containers
 - process
+- syb
+- pretty-simple
+- hashable
 
 library:
   source-dirs: src

@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Language.Syntax where
 
@@ -8,8 +9,11 @@ import Control.Monad.Except
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Int
+import Data.Generics
+import Data.Hashable
+import qualified GHC.Generics as GHCG
 
-type Program = [Expr]
+type Program = Expr
 
 type Ident = T.Text
 type Frame = M.Map Ident Expr
@@ -26,8 +30,10 @@ data Expr = Atom       Ident
           | DoubleExpr Double
           | BoolExpr   Bool
           | Quote      Expr
-          | NativeFunc ([Expr] -> Eval Expr)
           | List       [Expr]
+          deriving (Data, Typeable, GHCG.Generic)
+
+instance Hashable Expr
 
 data Type = AtomT
           | BoolT
@@ -38,7 +44,9 @@ data Type = AtomT
           | NativeT
           | AnyT
           | FuncT [Type]
-          deriving (Eq, Show)
+          deriving (Eq, Show, Data, Typeable, GHCG.Generic)
+
+instance Hashable Type
 
 true :: Expr
 true = BoolExpr True
@@ -52,21 +60,21 @@ nil  = List []
 instance Show Expr where
   show (Atom t)       = T.unpack $ "Atom " <> t
   show (Str t)        = T.unpack $ "Str " <> "\"" <> t <> "\""
+  show (Char c)       = "Char " <> show c
   show (BoolExpr b)   = "BoolExpr " ++ show b
   show (IntExpr x)    = "IntExpr " ++ show x
   show (DoubleExpr x) = "DoubleExpr " ++ show x
   show (Quote x)      = "Quote " ++ show x
-  show (NativeFunc _) = "<native function>"
   show (List xs)      = "List " ++ show xs
 
 display :: Expr -> T.Text
 display (Atom t)       = t
 display (Str t)        = "\"" <> t <> "\""
+display (Char c)        = "\'" <> (T.pack . show) c <> "\'"
 display (BoolExpr b)       = T.pack $ show b
 display (IntExpr x)    = T.pack $ show x
 display (DoubleExpr x) = T.pack $ show x
 display (Quote t)      = "'" <> display t
-display (NativeFunc _) = "<native function>"
 display (List xs)      = "(" <> T.unwords (map display xs) <> ")"
 
 displayT :: Type -> T.Text

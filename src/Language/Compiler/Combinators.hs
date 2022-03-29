@@ -1,6 +1,9 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Language.Compiler.Combinators where
 
 import Control.Monad.State
+import Control.Applicative
 import Data.ASM
 import Data.Int
 import Language.Compiler.Constants
@@ -9,12 +12,14 @@ import qualified Data.Map as M
 
 emit :: ASM -> CompC ()
 emit instr =
-  modify (\st -> st { asm = instr : (asm st)})
+  modify (\st -> st { asm = instr : asm st})
 
 movq x y = emit $ MOVQ x y
 addq x r = emit $ ADDQ x r
 subq x r = emit $ SUBQ x r
 cmpq x r = emit $ CMPQ x r
+leaq x r = emit $ LEAQ x r
+call l = emit $ CALL l
 label l = emit $ LABEL l
 jmp l = emit $ JMP l
 je l = emit $ JE l
@@ -27,6 +32,7 @@ shrq x r = emit $ SHRQ x r
 shlq x r = emit $ SHLQ x r
 sarq x r = emit $ SARQ x r
 ret = emit RET
+comment c = emit $ Comment c
 
 push = do
   si <- getSI
@@ -38,19 +44,36 @@ pop = do
   si <- getSI
   movq (OffsetOperand si RSP) rax
 
-decSI =
-  modify (\st -> st { stackIndex = stackIndex st - wordsize })
+resetSI :: CompC ()
+resetSI = setSI (-wordsize)
 
-incSI =
-  modify (\st -> st { stackIndex = stackIndex st + wordsize })
+decSI :: CompC ()
+decSI = modifySI (\si -> si - wordsize)
 
-getSI = stackIndex <$> get
+incSI :: CompC ()
+incSI = modifySI (+ wordsize)
+
+getSI :: CompC Int64
+getSI = gets stackIndex
+
+setSI :: Int64 -> CompC ()
+setSI si = modifySI (const si)
+
+modifySI :: (Int64 -> Int64) -> CompC ()
+modifySI f =
+  modify (\st -> st { stackIndex = f $ stackIndex st })
 
 getVar v = do
-  env <- env <$> get
-  case M.lookup v env of
-    Nothing -> error $ "unbound variable " <> show v
-    Just addr -> movq (OffsetOperand addr RSP) rax
+  env <- gets env
+  case frameLookup v env of
+    [] -> error $ "getVar: unbound variable " <> show v
+    (StackLocation addr:_) -> movq (OffsetOperand addr RSP) rax
+    (ClosureLocation addr:_) -> movq (OffsetOperand addr RDI) rax
+    (LabelLocation label:_) -> error $ "identifier points to a label: " <> show v
+    (HeapLocation addr:_) -> do
+      comment $ v <> ": fetching heap location"
+      movq (OffsetOperand addr RSP) rax -- rax contains pointer to value
+      -- movq (OffsetOperand 0 RAX) rax
 
 mkBoolFromFlag = do
   movq (i 0) rax
@@ -60,22 +83,22 @@ mkBoolFromFlag = do
 
 compareWithStack = do
   incSI
-  si <- stackIndex <$> get
+  si <- gets stackIndex
   cmpq (OffsetOperand si RSP) rax
   mkBoolFromFlag
 
 mulWithStack = do
   incSI
-  si <- stackIndex <$> get
+  si <- gets stackIndex
   imul (si % RSP) RAX
   sarq 2 RAX
 
 addWithStack = do
   incSI
-  si <- stackIndex <$> get
+  si <- gets stackIndex
   addq (si % RSP) rax
 
 subWithStack = do
   incSI
-  si <- stackIndex <$> get
+  si <- gets stackIndex
   subq (si % RSP) rax

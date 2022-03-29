@@ -1,10 +1,13 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Language.Compiler.Types where
 
 import Data.ASM
 import Data.Int
 
-import Control.Monad.State
+import Control.Monad.Except
 import Control.Monad.Identity
+import Control.Monad.State
+import Data.Maybe (isJust, fromMaybe)
 
 import qualified Data.Map as M
 import qualified Data.Text as T
@@ -17,28 +20,89 @@ data CompState =
             }
   deriving (Eq, Show)
 
-type CompC = StateT CompState Identity
+data CompError = CompilerError
+  deriving (Eq, Show)
+
+type CompC = StateT CompState (ExceptT CompError Identity)
 
 type Ident = T.Text
+type Label = T.Text
 
-type Env = M.Map Ident Int64
-emptyEnv = M.empty
+data Location = StackLocation   Int64
+              | ClosureLocation Int64
+              | HeapLocation    Int64
+              | LabelLocation   Label
+              deriving (Eq, Show)
 
-extendEnv :: Ident -> Int64 -> CompC ()
-extendEnv v i =
-  modify (\st -> st { env = M.insert v i (env st) })
+type Env = [M.Map Ident Location]
+
+emptyEnv = [M.empty]
+
+extendEnv :: Ident -> Location -> CompC ()
+extendEnv v loc =
+  let go env' =
+        case env' of
+          [] -> error "empty env"
+          e:es -> M.insert v loc e : es
+  in modify (\st -> st { env = go (env st) })
+
+pushEnvFrame :: CompC ()
+pushEnvFrame =
+  modify (\st -> st { env = M.empty : env st })
+
+popEnvFrame :: CompC ()
+popEnvFrame =
+  let go env' =
+        case env' of
+          [] -> error "empty env"
+          _:es -> es
+  in modify (\st -> st { env = go $ env st })
+
+frameLookup :: Ident -> Env -> [Location]
+frameLookup v e =
+  concatMap (maybe [] (: []) . M.lookup v) e
+
+envLookup :: Ident -> CompC Location
+envLookup ident = do
+  env <- gets env
+  case frameLookup ident env of
+    [] -> error $ "envLookup: Unbound variable: " <> show ident
+    (x:xs) -> pure x
+
+lookupStack :: Ident -> CompC Int64
+lookupStack x = do
+  lookup <- envLookup x
+  case lookup of
+    StackLocation l -> pure l
+    _ -> error $ "undefined variable " <> show x
+
+lookupLabel :: Ident -> CompC Label
+lookupLabel x = do
+  lookup <- envLookup x
+  case lookup of
+    LabelLocation l -> pure l
+    _ -> error $ "undefined label variable " <> show x
 
 incrementLabelCounter =
   modify (\st -> st { labelCounter = labelCounter st + 1 })
 
 uniqueLabel :: CompC T.Text
 uniqueLabel = do
-  counter <- labelCounter <$> get
+  counter <- gets labelCounter
   incrementLabelCounter
   pure . T.pack $ "L" <> show counter
 
+uniqueLabel' :: T.Text -> CompC T.Text
+uniqueLabel' p = do
+  counter <- gets labelCounter
+  incrementLabelCounter
+  pure $ p <> "_" <> T.pack (show counter)
+
+runCompC :: CompC a -> [ASM]
 runCompC c =
-  reverse . asm . runIdentity $ execStateT c initialState
+  case runIdentity $ runExceptT $ execStateT c initialState of
+    Left err -> undefined
+    Right compState -> reverse $ asm compState
   where initialState =
           CompState { asm = []
                     , stackIndex = (-8)
